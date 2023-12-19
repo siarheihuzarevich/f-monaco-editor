@@ -8,7 +8,7 @@ import {
   Input,
   NgZone, numberAttribute, OnChanges,
   OnDestroy, OnInit, Optional,
-  Output, Self
+  Output, Self, SimpleChanges
 } from '@angular/core';
 import {
   AbstractControl,
@@ -22,20 +22,13 @@ import { fromEvent, Subject, Subscription, takeUntil } from 'rxjs';
 import { editor, IDisposable, ISelection, Position } from 'monaco-editor';
 import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
 import { IFMonacoEditorOptions } from './i-f-monaco-editor-options';
-import
 
-  declare
-
-var monaco: any;
+declare var monaco: any;
 
 let loadedMonaco = false;
 let loadPromise: Promise<void>;
 
-export interface PmMonacoEditorConfig {
-  baseUrl?: string;
-  defaultOptions?: { [ key: string ]: any; };
-  onMonacoLoad?: Function;
-}
+let nextUniqueId = 0;
 
 @Component({
   selector: 'f-monaco-editor',
@@ -46,21 +39,20 @@ export interface PmMonacoEditorConfig {
     'class': 'f-monaco-editor',
     '[attr.id]': 'id',
     'ngSkipHydration': '',
+    '[class.f-monaco-editor-focused]': 'focused',
     '[class.f-monaco-editor-disabled]': 'disabled',
     '[class.f-monaco-editor-invalid]': 'errorState',
-    '[class.f-monaco-editor-empty]': 'empty'
-  },
-  providers: [ {
-    provide: NG_VALUE_ACCESSOR,
-    useExisting: forwardRef(() => FMonacoEditorComponent),
-    multi: true
-  } ]
+    '[class.f-monaco-editor-empty]': '!value',
+  }
 })
 export class FMonacoEditorComponent implements OnChanges,
                                                OnDestroy,
                                                OnInit,
-                                               DoCheck,
                                                ControlValueAccessor {
+
+  private _id!: string;
+
+  private uid = `f-monaco-editor-${ nextUniqueId++ }`;
 
   @Input()
   public get id(): string {
@@ -68,37 +60,35 @@ export class FMonacoEditorComponent implements OnChanges,
   }
 
   public set id(value: string) {
-    this._id = value || this._uid;
+    this._id = value || this.uid;
     this.stateChanges.next();
   }
 
-  private _id!: string;
+  private _focused: boolean = false;
 
-  private _uid = `f-monaco-editor-${ nextUniqueId++ }`;
+  public get focused(): boolean {
+    return this._focused;
+  }
 
   @Output()
-  public focusChange: EventEmitter<boolean> = new EventEmitter<boolean>();
+  public focusChanges: EventEmitter<boolean> = new EventEmitter<boolean>();
 
   @Output()
-  public initialized: EventEmitter<IStandaloneCodeEditor> = new EventEmitter<IStandaloneCodeEditor>();
+  public loaded: EventEmitter<IStandaloneCodeEditor> = new EventEmitter<IStandaloneCodeEditor>();
 
   private editor: IStandaloneCodeEditor | undefined;
 
-  private _previousControl: AbstractControl | null | undefined;
+  protected readonly destroy: Subject<void> = new Subject<void>();
 
-  protected readonly _destroy: Subject<void> = new Subject<void>();
-
-  private _errorStateTracker: _ErrorStateTracker;
+  private errorStateTracker: _ErrorStateTracker;
 
   public readonly stateChanges: Subject<void> = new Subject<void>();
 
-  _onChange: (value: any) => void = () => {
+  private onChange: (value: any) => void = () => {
   };
 
-  _onTouched = () => {
+  private onTouched = () => {
   };
-
-  _valueId = `f-monaco-editor-value-${ nextUniqueId++ }`;
 
   @Input({ transform: booleanAttribute })
   public disabled: boolean = false;
@@ -114,10 +104,10 @@ export class FMonacoEditorComponent implements OnChanges,
   }
 
   public set value(newValue: any) {
-    const hasAssigned = this._assignValue(newValue);
+    const hasAssigned = this.assignValue(newValue);
 
     if (hasAssigned) {
-      this._onChange(newValue);
+      this.onChange(newValue);
     }
   }
 
@@ -128,36 +118,35 @@ export class FMonacoEditorComponent implements OnChanges,
 
   @Input()
   public get errorStateMatcher() {
-    return this._errorStateTracker.matcher;
+    return this.errorStateTracker.matcher;
   }
 
   public set errorStateMatcher(value: ErrorStateMatcher) {
-    this._errorStateTracker.matcher = value;
+    this.errorStateTracker.matcher = value;
   }
 
-  /** Whether the select is in an error state. */
-  get errorState() {
-    return this._errorStateTracker.errorState;
+  public set errorState(value: boolean) {
+    this.errorStateTracker.errorState = value;
   }
 
-  set errorState(value: boolean) {
-    this._errorStateTracker.errorState = value;
+  public get errorState() {
+    return this.errorStateTracker.errorState;
   }
 
-  private _options: IFMonacoEditorOptions = {};
+  private _configuration: IFMonacoEditorOptions = {};
 
   @Input()
-  public set options(options: IFMonacoEditorOptions) {
-    this._options = options;
+  public set configuration(configuration: IFMonacoEditorOptions) {
+    this._configuration = configuration;
 
     if (this.editor) {
       this.disposeEditor();
-      this.initializeEditor(options);
+      this.initializeEditor(configuration);
     }
   }
 
-  public get options(): IFMonacoEditorOptions {
-    return this._options;
+  public get configuration(): IFMonacoEditorOptions {
+    return this._configuration;
   }
 
   private get hostElement(): HTMLElement {
@@ -165,23 +154,22 @@ export class FMonacoEditorComponent implements OnChanges,
   }
 
   constructor(
-    protected _viewportRuler: ViewportRuler,
-    protected _changeDetectorRef: ChangeDetectorRef,
-    protected _ngZone: NgZone,
+    public elementReference: ElementRef,
+    protected viewportRuler: ViewportRuler,
+    protected changeDetectorRef: ChangeDetectorRef,
+    protected ngZone: NgZone,
     defaultErrorStateMatcher: ErrorStateMatcher,
-    readonly _elementRef: ElementRef,
     @Optional() parentForm: NgForm,
     @Optional() parentFormGroup: FormGroupDirective,
     @Self() @Optional() public ngControl: NgControl,
     @Attribute('tabindex') tabIndex: string,
-    private _liveAnnouncer: LiveAnnouncer,
     @Optional() @Inject(MAT_SELECT_CONFIG) protected _defaultOptions?: MatSelectConfig,
   ) {
     if (this.ngControl) {
       this.ngControl.valueAccessor = this;
     }
 
-    this._errorStateTracker = new _ErrorStateTracker(
+    this.errorStateTracker = new _ErrorStateTracker(
       defaultErrorStateMatcher,
       ngControl,
       parentFormGroup,
@@ -194,21 +182,11 @@ export class FMonacoEditorComponent implements OnChanges,
   }
 
   public ngOnInit(): void {
-    this._viewportRuler
-      .change()
-      .pipe(takeUntil(this._destroy))
-      .subscribe(() => {
-        if (this.editor) {
-          //relayout
-          this._changeDetectorRef.detectChanges();
-        }
-      });
-
+    this.subscribeOnViewportChanges();
 
     if (loadedMonaco) {
       loadPromise.then(() => {
-        this.hideSpinner();
-        this.initializeEditor(this.options);
+        this.initializeEditor(this.configuration);
       });
     } else {
       loadedMonaco = true;
@@ -221,8 +199,7 @@ export class FMonacoEditorComponent implements OnChanges,
         const onGotAmdLoader: any = () => {
           (<any>window).require.config({ paths: { 'vs': `${ baseUrl }` } });
           (<any>window).require([ `vs/editor/editor.main` ], () => {
-            this.hideSpinner();
-            this.initializeEditor(this.options);
+            this.initializeEditor(this.configuration);
             resolve();
           });
         };
@@ -241,33 +218,125 @@ export class FMonacoEditorComponent implements OnChanges,
     }
   }
 
-  public writeValue(value: any | undefined): void {
-
+  private subscribeOnViewportChanges(): void {
+    this.viewportRuler
+      .change()
+      .pipe(takeUntil(this.destroy))
+      .subscribe(() => {
+        if (this.editor) {
+          this.editor.layout()
+          this.changeDetectorRef.detectChanges();
+        }
+      });
   }
 
-  public registerOnChange(fn: any): void {
-    this.propagateChange = fn;
+  public ngOnChanges(changes: SimpleChanges): void {
+    if (changes[ 'disabled' ]) {
+      this.stateChanges.next();
+    }
   }
 
-  public registerOnTouched(fn: any): void {
+  public writeValue(value: any): void {
+    this.assignValue(value);
+  }
+
+  public registerOnChange(fn: (value: any) => void): void {
+    this.onChange = fn;
+  }
+
+  public registerOnTouched(fn: () => {}): void {
     this.onTouched = fn;
   }
 
-  private initializeEditor(options: IFMonacoEditorOptions): void {
-    this.editor = monaco.editor.create(this.hostElement, options) as IStandaloneCodeEditor;
-
-    this.subscribeOnBlur();
+  public setDisabledState(isDisabled: boolean): void {
+    this.disabled = isDisabled;
+    this.changeDetectorRef.markForCheck();
+    this.stateChanges.next();
   }
 
+  public updateErrorState(): void {
+    this.errorStateTracker.updateErrorState();
+  }
 
-  private subscribeOnBlur(): void {
-    this.editor?.onDidBlurEditorWidget(() => {
-      this.onTouched();
+  private assignValue(newValue: any): boolean {
+    if (newValue !== this._value) {
+      if (this.editor) {
+        this._setSelectionByValue(newValue);
+      }
+
+      this._value = newValue;
+      return true;
+    }
+    return false;
+  }
+
+  private initializeEditor(configuration: IFMonacoEditorOptions): void {
+    this.editor = monaco.editor.create(this.hostElement, configuration) as IStandaloneCodeEditor;
+
+    this.subscribeOnContentChange();
+
+    this.subscribeOnFocus();
+
+    this.subscribeOnBlur();
+
+    this.loaded.emit(this.editor);
+  }
+
+  private subscribeOnContentChange(): void {
+    this.editor?.onDidChangeModelContent((e: any) => {
+      this.ngZone.run(() => {
+        this.propagateChanges(this.editor?.getValue());
+      });
     });
   }
 
+  private propagateChanges(value: any): void {
+    this._value = value;
+    this.valueChange.emit(value);
+    this.onChange(value);
+  }
+
+  private subscribeOnFocus(): void {
+    this.editor?.onDidFocusEditorWidget(() => {
+      this.onFocus();
+    });
+  }
+
+  private onFocus(): void {
+    if (!this.disabled) {
+      this._focused = true;
+      this.stateChanges.next();
+      this.focusChanges.emit(true);
+    }
+  }
+
+  public focus(): void {
+    if (this.editor && !this.disabled) {
+      this.editor.focus();
+    }
+  }
+
+  private subscribeOnBlur(): void {
+    this.editor?.onDidBlurEditorWidget(() => {
+      this.onBlur();
+    });
+  }
+
+  private onBlur(): void {
+    this._focused = false;
+
+    if (!this.disabled) {
+      this.onTouched();
+      this.changeDetectorRef.markForCheck();
+      this.stateChanges.next();
+      this.focusChanges.emit(false);
+    }
+  }
+
   public ngOnDestroy(): void {
-    this.resizeSubscription$.unsubscribe();
+    this.destroy.next();
+    this.destroy.complete();
+    this.stateChanges.complete();
 
     this.disposeEditor();
   }
