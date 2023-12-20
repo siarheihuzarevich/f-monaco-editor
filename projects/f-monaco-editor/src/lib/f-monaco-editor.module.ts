@@ -1,10 +1,7 @@
 import { ModuleWithProviders, NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  PM_MONACO_EDITOR_CONFIG,
-  FMonacoEditorComponent,
-  PmMonacoEditorConfig
-} from './components/f-monaco-editor.component';
+import { FMonacoEditorComponent } from './f-monaco-editor.component';
+import { F_MONACO_EDITOR_CONFIGURATION, IFMonacoEditorConfiguration } from './i-f-monaco-editor-configuration';
 
 @NgModule({
   imports: [
@@ -19,11 +16,11 @@ import {
 })
 export class FMonacoEditorModule {
 
-  public static forRoot(config: PmMonacoEditorConfig = {}): ModuleWithProviders<FMonacoEditorModule> {
+  public static forRoot(configuration: IFMonacoEditorConfiguration = {}): ModuleWithProviders<FMonacoEditorModule> {
     return {
       ngModule: FMonacoEditorModule,
       providers: [
-        { provide: PM_MONACO_EDITOR_CONFIG, useValue: config }
+        { provide: F_MONACO_EDITOR_CONFIGURATION, useValue: configuration }
       ]
     };
   }

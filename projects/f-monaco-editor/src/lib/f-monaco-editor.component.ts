@@ -1,27 +1,30 @@
 import {
-  AfterViewInit, Attribute, booleanAttribute, ChangeDetectionStrategy,
+  Attribute,
+  booleanAttribute,
+  ChangeDetectionStrategy,
   ChangeDetectorRef,
-  Component, DoCheck,
+  Component,
   ElementRef,
   EventEmitter,
-  forwardRef,
+  Inject,
   Input,
   NgZone, numberAttribute, OnChanges,
   OnDestroy, OnInit, Optional,
   Output, Self, SimpleChanges
 } from '@angular/core';
 import {
-  AbstractControl,
   ControlValueAccessor,
   FormGroupDirective,
-  NG_VALUE_ACCESSOR,
   NgControl,
   NgForm
 } from '@angular/forms';
-import { fromEvent, Subject, Subscription, takeUntil } from 'rxjs';
-import { editor, IDisposable, ISelection, Position } from 'monaco-editor';
+import { Subject, takeUntil } from 'rxjs';
+import { editor } from 'monaco-editor';
 import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
-import { IFMonacoEditorOptions } from './i-f-monaco-editor-options';
+import { F_MONACO_EDITOR_CONFIGURATION, IFMonacoEditorConfiguration } from './i-f-monaco-editor-configuration';
+import { ViewportRuler } from '@angular/cdk/overlay';
+import { ErrorStateMatcher } from '@angular/material/core';
+import { ErrorStateTracker } from './error-state-tracker';
 
 declare var monaco: any;
 
@@ -80,7 +83,7 @@ export class FMonacoEditorComponent implements OnChanges,
 
   protected readonly destroy: Subject<void> = new Subject<void>();
 
-  private errorStateTracker: _ErrorStateTracker;
+  private errorStateTracker: ErrorStateTracker;
 
   public readonly stateChanges: Subject<void> = new Subject<void>();
 
@@ -126,17 +129,17 @@ export class FMonacoEditorComponent implements OnChanges,
   }
 
   public set errorState(value: boolean) {
-    this.errorStateTracker.errorState = value;
+    this.errorStateTracker.setErrorState(value);
   }
 
   public get errorState() {
     return this.errorStateTracker.errorState;
   }
 
-  private _configuration: IFMonacoEditorOptions = {};
+  private _configuration: IFMonacoEditorConfiguration | undefined;
 
   @Input()
-  public set configuration(configuration: IFMonacoEditorOptions) {
+  public set configuration(configuration: IFMonacoEditorConfiguration) {
     this._configuration = configuration;
 
     if (this.editor) {
@@ -145,8 +148,8 @@ export class FMonacoEditorComponent implements OnChanges,
     }
   }
 
-  public get configuration(): IFMonacoEditorOptions {
-    return this._configuration;
+  public get configuration(): IFMonacoEditorConfiguration {
+    return this._configuration || this.defaultConfiguration;
   }
 
   private get hostElement(): HTMLElement {
@@ -163,13 +166,13 @@ export class FMonacoEditorComponent implements OnChanges,
     @Optional() parentFormGroup: FormGroupDirective,
     @Self() @Optional() public ngControl: NgControl,
     @Attribute('tabindex') tabIndex: string,
-    @Optional() @Inject(MAT_SELECT_CONFIG) protected _defaultOptions?: MatSelectConfig,
+    @Optional() @Inject(F_MONACO_EDITOR_CONFIGURATION) private defaultConfiguration: IFMonacoEditorConfiguration,
   ) {
     if (this.ngControl) {
       this.ngControl.valueAccessor = this;
     }
 
-    this.errorStateTracker = new _ErrorStateTracker(
+    this.errorStateTracker = new ErrorStateTracker(
       defaultErrorStateMatcher,
       ngControl,
       parentFormGroup,
@@ -261,7 +264,7 @@ export class FMonacoEditorComponent implements OnChanges,
   private assignValue(newValue: any): boolean {
     if (newValue !== this._value) {
       if (this.editor) {
-        this._setSelectionByValue(newValue);
+        this.setTextValue(newValue);
       }
 
       this._value = newValue;
@@ -270,8 +273,10 @@ export class FMonacoEditorComponent implements OnChanges,
     return false;
   }
 
-  private initializeEditor(configuration: IFMonacoEditorOptions): void {
+  private initializeEditor(configuration: IFMonacoEditorConfiguration): void {
     this.editor = monaco.editor.create(this.hostElement, configuration) as IStandaloneCodeEditor;
+
+    this.setTextValue(this.value);
 
     this.subscribeOnContentChange();
 
@@ -280,6 +285,16 @@ export class FMonacoEditorComponent implements OnChanges,
     this.subscribeOnBlur();
 
     this.loaded.emit(this.editor);
+  }
+
+  private setTextValue(value: any): void {
+    if (!this.editor) {
+      throw new Error('Editor is not initialized');
+    }
+    this.editor.setValue(value || '');
+    this.editor.setPosition({ column: 1, lineNumber: 1 });
+    this.editor.setScrollPosition({ scrollTop: 0 });
+    this.editor.focus();
   }
 
   private subscribeOnContentChange(): void {
