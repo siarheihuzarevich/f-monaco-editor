@@ -1,0 +1,31 @@
+{
+  "name": "@foblex/monaco-editor-schematic",
+  "version": "1.0.1",
+  "description": "Schematic for adding the @foblex/monaco-editor to Angular projects",
+  "main": "dist/ng-add/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && jasmine src/**/*_spec.js"
+  },
+  "keywords": [
+    "angular",
+    "foblex",
+    "monaco-editor"
+  ],
+  "author": "Siarhei Huzarevich",
+  "license": "MIT",
+  "schematics": "./src/collection.json",
+  "files": [
+    "dist/**/*"
+  ],
+  "dependencies": {
+    "@angular-devkit/core": "^17.0.7",
+    "@angular-devkit/schematics": "^17.0.7",
+    "typescript": "~5.2.2"
+  },
+  "devDependencies": {
+    "@types/jasmine": "~5.1.0",
+    "@types/node": "^18.18.0",
+    "jasmine": "^5.0.0"
+  }
+}

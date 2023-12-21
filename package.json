@@ -6,6 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
+    "build-schema": "cd schematics/ng-add && npm run build",
+    "link-schema": "cd schematics/ng-add && npm link",
+    "publish-schema": "cd schematics/ng-add && npm publish",
     "test": "ng test"
   },
   "private": true,
@@ -18,9 +21,7 @@
     "@angular/platform-browser": "^16.2.0",
     "@angular/platform-browser-dynamic": "^16.2.0",
     "@angular/router": "^16.2.0",
-    "@angular/cdk": "^16.2.12",
-    "@angular/material": "^16.2.12",
-    "monaco-editor": "^0.45.0",
+    "@foblex/monaco-editor": "^0.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"

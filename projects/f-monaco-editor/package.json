@@ -1,9 +1,14 @@
 {
-  "name": "f-monaco-editor",
-  "version": "0.0.1",
+  "name": "@foblex/monaco-editor",
+  "version": "1.0.0",
   "peerDependencies": {
     "@angular/common": "^16.2.0",
-    "@angular/core": "^16.2.0"
+    "@angular/core": "^16.2.0",
+    "@angular/forms": "^16.2.0",
+    "@angular/cdk": "^16.2.12",
+    "@angular/material": "^16.2.12",
+    "rxjs": "~7.8.0",
+    "monaco-editor": "^0.45.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
