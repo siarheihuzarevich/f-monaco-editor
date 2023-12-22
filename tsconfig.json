@@ -7,7 +7,8 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "paths": {
-      "f-monaco-editor": [
+      "@foblex/monaco-editor": [
+//        "projects/f-monaco-editor/src/public-api.ts",
         "dist/f-monaco-editor"
       ]
     },
