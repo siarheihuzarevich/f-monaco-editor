@@ -9,6 +9,7 @@
     "build-schema": "cd schematics/ng-add && npm run build",
     "link-schema": "cd schematics/ng-add && npm link",
     "publish-schema": "cd schematics/ng-add && npm publish",
+    "publish": "ng build f-monaco-editor && cd dist/f-monaco-editor && npm publish",
     "test": "ng test"
   },
   "private": true,
