@@ -1,24 +1,41 @@
 # FMonacoEditor
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 16.2.0.
+This is a Monaco Editor component for Angular 16+.
 
-## Code scaffolding
+## Installation
 
-Run `ng generate component component-name --project f-monaco-editor` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module --project f-monaco-editor`.
-> Note: Don't forget to add `--project f-monaco-editor` or else it will be added to the default project in your `angular.json` file. 
+```bash
+npm install @foblex/monaco-editor
+```
 
-## Build
+Add this to your `angular.json` file in the `assets` array:
 
-Run `ng build f-monaco-editor` to build the project. The build artifacts will be stored in the `dist/` directory.
+```json
+{
+  "glob": "**/*",
+  "input": "node_modules/monaco-editor/min/vs",
+  "output": "/assets/monaco"
+}
+```
 
-## Publishing
+## Usage
 
-After building your library with `ng build f-monaco-editor`, go to the dist folder `cd dist/f-monaco-editor` and run `npm publish`.
+```typescript
+import { FMonacoEditorComponent } from '@foblex/monaco-editor';
 
-## Running unit tests
+@NgModule({
+  import: [
+    FMonacoEditorComponent
+  ]
+})
+```
 
-Run `ng test f-monaco-editor` to execute the unit tests via [Karma](https://karma-runner.github.io).
+```typescript
+public options: IFCodeEditorOptions = {
+  language: 'sql'
+}
+```
 
-## Further help
-
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+```html
+<f-monaco-editor [(ngModel)]="value" [options]="options"></f-monaco-editor>
+```

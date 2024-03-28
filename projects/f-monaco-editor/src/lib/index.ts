@@ -1,1 +1,2 @@
-export * from './f-monaco-editor.module';
+export * from './components';
+export * from './domain';

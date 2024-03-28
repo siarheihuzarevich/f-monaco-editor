@@ -1,17 +1,20 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { IFMonacoEditorConfiguration } from '@foblex/monaco-editor';
+import { Component } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
-
+import { createModel, ICodeEditor, IFCodeEditorOptions } from '@foblex/monaco-editor';
+import { MatCheckboxChange } from '@angular/material/checkbox';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
   styleUrls: [ './app.component.scss' ]
 })
-export class AppComponent implements OnInit, OnDestroy {
-  title = 'f-monaco-editor-demo';
+export class AppComponent {
 
-  public configuration: IFMonacoEditorConfiguration = {
+  public languages: string[] = [ 'sql', 'javascript', 'typescript', 'html', 'css' ];
+
+  private editor: ICodeEditor | undefined;
+
+  public options: IFCodeEditorOptions = {
     theme: 'vs-dark',
     language: 'sql',
     automaticLayout: true,
@@ -22,14 +25,22 @@ export class AppComponent implements OnInit, OnDestroy {
   };
 
   public form: FormGroup = new FormGroup({
-    language: new FormControl('sql'),
-    editor: new FormGroup({}),
+    editor: new FormControl(''),
   });
 
-  public ngOnInit(): void {
+  public onEditorLoaded(editor: ICodeEditor): void {
+    this.editor = editor;
   }
 
-  public ngOnDestroy(): void {
+  public onLanguageChanged(language: string): void {
+    this.editor?.setModel(createModel(this.form.get('editor')?.value, language));
+  }
 
+  public onMinimapChanged(event: MatCheckboxChange): void {
+    this.editor?.updateOptions({
+      minimap: {
+        enabled: event.checked
+      }
+    })
   }
 }

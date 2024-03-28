@@ -1,2 +1,16 @@
-<f-monaco-editor class="code-editor" [configuration]="configuration">
-</f-monaco-editor>
+<div class="toolbar">
+  <mat-form-field>
+    <mat-label>Language</mat-label>
+    <mat-select value="sql" (valueChange)="onLanguageChanged($event)">
+      <mat-option *ngFor="let language of languages" [value]="language">{{ language }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-checkbox value="false" (change)="onMinimapChanged($event)">Minimap</mat-checkbox>
+</div>
+
+<ng-container [formGroup]="form">
+  <f-monaco-editor class="code-editor" (loaded)="onEditorLoaded($event)" [options]="options" formControlName="editor"></f-monaco-editor>
+</ng-container>
+
+

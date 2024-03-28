@@ -8,8 +8,7 @@
     "strict": true,
     "paths": {
       "@foblex/monaco-editor": [
-//        "projects/f-monaco-editor/src/public-api.ts",
-        "dist/f-monaco-editor"
+        "projects/f-monaco-editor/src/public-api.ts"
       ]
     },
     "noImplicitOverride": true,
